@@ -2,10 +2,9 @@ package app
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/alecthomas/assert"
-
-	"testing"
 )
 
 type DB string

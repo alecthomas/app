@@ -31,7 +31,7 @@ import (
 	"reflect"
 
 	"github.com/alecthomas/inject"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/alecthomas/kingpin.v3-unstable"
 )
 
 // An application Module has four distinct purposes:

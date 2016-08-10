@@ -28,6 +28,7 @@ package app
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/alecthomas/inject"
@@ -70,7 +71,6 @@ type Module interface {
 // Configurator is passed to the Module.Configure() method to allow modules to add flags.
 type Configurator interface {
 	Flag(name, help string) *kingpin.FlagClause
-	Arg(name, help string) *kingpin.ArgClause
 	Command(name, help string) *kingpin.CmdClause
 }
 
@@ -127,10 +127,17 @@ func (a *Application) Install(modules ...Module) *Application {
 	return a
 }
 
-// Run the application using the given run function.
+// Run the application using the given run function and command-line args.
 //
-// Its arguments will be obtained from the instsalled modules.
-func (a *Application) Run(args []string, run interface{}) error {
+// Its arguments will be obtained from the installed modules.
+func (a *Application) Run(run interface{}) error {
+	return a.RunWithArgs(os.Args[1:], run)
+}
+
+// RunWithArgs the application using the given run function.
+//
+// Its arguments will be obtained from the installed modules.
+func (a *Application) RunWithArgs(args []string, run interface{}) error {
 	injector := inject.New()
 	if err := injector.Bind(a); err != nil {
 		return err

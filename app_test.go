@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/alecthomas/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 type DB string
@@ -31,7 +31,7 @@ func TestAppConfigureProvideInject(t *testing.T) {
 	app := New("", "").
 		Install(&testModuleA{}, &testModuleB{})
 
-	err := app.Run([]string{}, func(db_ DB) error {
+	err := app.RunWithArgs([]string{}, func(db_ DB) error {
 		run = true
 		db = db_
 		return nil
@@ -40,7 +40,7 @@ func TestAppConfigureProvideInject(t *testing.T) {
 	assert.True(t, run)
 	assert.Equal(t, DB("DB:postgres://127.0.0.1:"), db)
 
-	err = app.Run([]string{"--test=flag"}, func(db_ DB) error {
+	err = app.RunWithArgs([]string{"--test=flag"}, func(db_ DB) error {
 		run = true
 		db = db_
 		return nil

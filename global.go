@@ -14,7 +14,7 @@ var (
 
 // Run a function using the global Application instance.
 func Run(run interface{}) {
-	FatalIfError(App.Run(os.Args[1:], run), "")
+	FatalIfError(App.Run(run), "")
 }
 
 // Help sets the global Application help.

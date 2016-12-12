@@ -58,7 +58,7 @@ import (
 //
 // Where [Multi] means that a new instance of <type> will be provided each time it is required, and
 // [Sequence] means the return value will be provided as []<type>. This allows multiple providers to
-// contribute to a single vaule. ... can be any type provided by the application or other modules.
+// contribute to a single value. ... can be any type provided by the application or other modules.
 //
 // 4. Optionally run some code at startup, just prior to the application entry point.
 //

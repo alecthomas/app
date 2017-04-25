@@ -47,9 +47,10 @@ import (
   "github.com/alecthomas/app"
   "github.com/prometheus/client_golang/prometheus"
 
-  "myapp/user"
-  "myapp/mongo"
-  "myapp/monitoring"
+  "myorg/user"
+  "myorg/mongo"
+  "myorg/monitoring"
+  "myorg/httpserver"
 )
 
 type Application struct {
@@ -81,7 +82,12 @@ func (a *Application) ProvideMonitoringMapping() map[string]prometheus.Collector
 
 func main() {
   app.
-    Install(&mongo.Module{}, &user.Module{}, &monitoring.Module{}).
+    Install(
+      &mongo.Module{},
+      &user.Module{},
+      &monitoring.Module{},
+      &httpserver.Module{},
+    ).
     Run(New())
 }
 ```
@@ -166,6 +172,9 @@ func (m *Module) Start(routes []Route) error {
 }
 ```
 
+The `monitoring` module registers a set of prometheus collectors provided by
+other modules, and provides a handler for metrics collection.
+
 ```go
 package monitoring
 
@@ -179,6 +188,11 @@ import (
 )
 
 type Module struct {}
+
+func (m *Module) Configure(config app.Configurator) error {
+  config.Install(&httpserver.Module{})
+  return nil
+}
 
 func (m *Module) ProvideRouteSequence(collectors []prometheus.Collector) []httpserver.Route {
   for _, collector := range collectors {

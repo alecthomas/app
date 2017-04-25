@@ -12,9 +12,9 @@ var (
 	App = New(filepath.Base(os.Args[0]), "")
 )
 
-// Run a function using the global Application instance.
-func Run(run interface{}) {
-	FatalIfError(App.Run(run), "")
+// Run the given module using the global Application instance.
+func Run(module interface{}) {
+	FatalIfError(App.Run(module), "")
 }
 
 // Help sets the global Application help.
@@ -23,17 +23,17 @@ func Help(help string) *Application {
 }
 
 // Install a module into the global Application instance.
-func Install(modules ...Module) *Application {
+func Install(modules ...interface{}) *Application {
 	return App.Install(modules...)
 }
 
 // Flag adds a new flag to the application.
-func Flag(name, help string) *kingpin.FlagClause {
+func Flag(name, help string) *kingpin.Clause {
 	return App.Flag(name, help)
 }
 
 // Arg adds a new positional argument to the application.
-func Arg(name, help string) *kingpin.ArgClause {
+func Arg(name, help string) *kingpin.Clause {
 	return App.Arg(name, help)
 }
 

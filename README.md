@@ -97,7 +97,8 @@ import (
 
 // Configures and provides a Mongo session.
 type Module struct {
-  URI string `help:"Mongo URI" required:"true"`
+  URI string `help:"Mongo URI." required:"true"`
+  DB string `help:"Mongo DB to connect to." default:"development"`
 }
 
 func (m *Module) ProvideMongoSession() (*mgo.Session, error) {
@@ -105,7 +106,7 @@ func (m *Module) ProvideMongoSession() (*mgo.Session, error) {
 }
 
 func (m *Module) ProvideMongoDB(session *mgo.Session) *mgo.DB {
-  return session.DB("db")
+  return session.DB(m.DB)
 }
 ```
 

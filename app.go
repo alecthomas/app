@@ -45,8 +45,9 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/alecthomas/inject"
 	"gopkg.in/alecthomas/kingpin.v3-unstable"
+
+	"github.com/alecthomas/inject"
 )
 
 // A Configurable module.
@@ -56,7 +57,7 @@ type Configurable interface {
 
 // Configurator is passed to the Module.Configure() method to allow modules to add flags.
 type Configurator interface {
-	inject.Binder
+	inject.SafeBinder
 	Flag(name, help string) *kingpin.Clause
 	Command(name, help string) *kingpin.CmdClause
 }
@@ -98,6 +99,19 @@ func (a *Application) Run(module interface{}) error {
 	return a.RunWithArgs(os.Args[1:], module)
 }
 
+type configuratorType struct {
+	inject.SafeBinder
+	app *kingpin.Application
+}
+
+func (c configuratorType) Flag(name, help string) *kingpin.Clause {
+	return c.app.Flag(name, help)
+}
+
+func (c configuratorType) Command(name, help string) *kingpin.CmdClause {
+	return c.app.Command(name, help)
+}
+
 // RunWithArgs the given application module's Start(...) method.
 //
 // Its arguments will be obtained from the installed modules.
@@ -106,20 +120,17 @@ func (a *Application) RunWithArgs(args []string, module interface{}) error {
 	if !start.IsValid() {
 		return fmt.Errorf("no Start(...) method on application module")
 	}
-	injector := inject.New()
-	if err := injector.SafeBind(a); err != nil {
+	injector := inject.SafeNew()
+	if err := injector.Bind(a); err != nil {
 		return err
 	}
 	// Configure modules.
 	modules := []interface{}{}
 	modules = append(modules, a.modules...)
 	modules = append(modules, module)
-	configurator := struct {
-		inject.Binder
-		*kingpin.Application
-	}{injector, a.Application}
+	configurator := configuratorType{injector, a.Application}
 	for _, module := range modules {
-		if err := injector.SafeInstall(module); err != nil {
+		if err := injector.Install(module); err != nil {
 			return err
 		}
 		if conf, ok := module.(Configurable); ok {
@@ -141,16 +152,16 @@ func (a *Application) RunWithArgs(args []string, module interface{}) error {
 		mv := reflect.ValueOf(module)
 		method := mv.MethodByName("Start")
 		if method.IsValid() {
-			if _, err = injector.SafeCall(method.Interface()); err != nil {
+			if _, err = injector.Call(method.Interface()); err != nil {
 				return err
 			}
 		}
 	}
 	// Run application.
-	if err = injector.SafeBind(SelectedCommand(command)); err != nil {
+	if err = injector.Bind(SelectedCommand(command)); err != nil {
 		return err
 	}
-	_, err = injector.SafeCall(start.Interface())
+	_, err = injector.Call(start.Interface())
 	// Call module Stop(...) methods in reverse.
 	for i := len(a.modules) - 1; i >= 0; i-- {
 		mv := reflect.ValueOf(a.modules[i])

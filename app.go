@@ -1,20 +1,36 @@
-// Package app is a main entry point for modular applications. Each application consists of a set of
-// Modules providing features, and an application module. Types provided by modules can be used by
-// other modules.
+// Package app is a main entry point for modular applications. Each application consists of a set of Modules providing
+// features, and an application module. Types provided by modules can be used by other modules.
 //
-// It is an opinionated framework, relying on gopkg.in/alecthomas/kingpin.v3-unstable for command-
-// line management and github.com/alecthomas/inject for injection. See those modules for details on
-// defining flags and implementing provider methods, respectively.
+// It is an opinionated framework, relying on gopkg.in/alecthomas/kingpin.v3-unstable for command- line management and
+// github.com/alecthomas/inject for injection. See those modules for details on defining flags and implementing provider
+// methods, respectively.
 //
-// Modules may (optionally) configure the Application instance by implementing:
+// The application lifecycle is as follows:
 //
-// 		Configure(app.Configurator) error
+// 1. Construct an application with New().
 //
-// Flags can be configured here, but it is generally more convenient to use Kingpin's struct
-// flags (see Kingpin documentation for details).
+// 2. Install() any modules.
 //
-// If the module has a method called "Start(...)", it will be called with any parameters injected.
-// Similarly, any methods with a "Stop(...)" method will have it called in reverse order.
+// 3. Call Run() with the "main" module.
+//
+// 4. An injector is created.
+//
+// 5. Module construction...
+//
+// 5.1. Each module (including main) will be installed into the injector.
+//
+// 5.2. If the module implements the Configurable interface, its Configure() method will be called.
+//
+// 5.3. Finally, the module will be passed to kingpin.Application.Struct() to provide configuration support.
+//
+// 6. Kingpin is called to parse the command-line and insert values into the modules.
+//
+// 7. Each module's Start() method (if any) is called via the injector, injecting parameters from modules.
+//
+// 8. The "main".Start() is called to run the application.
+//
+// 9. When "main".Start() returns, run each module's Stop() method (if any).
+//
 //
 // Here is a basic example app:
 //
@@ -50,16 +66,15 @@ import (
 	"github.com/alecthomas/inject"
 )
 
+// Binder for injector.
+type Binder = inject.SafeBinder
+
 // A Configurable module.
 type Configurable interface {
-	Configure(config Configurator) error
-}
-
-// Configurator is passed to the Module.Configure() method to allow modules to add flags.
-type Configurator interface {
-	inject.SafeBinder
-	Flag(name, help string) *kingpin.Clause
-	Command(name, help string) *kingpin.CmdClause
+	// Configure the module.
+	//
+	// "binder" may be used to explicitly add bindings to the injector.
+	Configure(binder Binder) error
 }
 
 // Application object.
@@ -99,19 +114,6 @@ func (a *Application) Run(module interface{}) error {
 	return a.RunWithArgs(os.Args[1:], module)
 }
 
-type configuratorType struct {
-	inject.SafeBinder
-	app *kingpin.Application
-}
-
-func (c configuratorType) Flag(name, help string) *kingpin.Clause {
-	return c.app.Flag(name, help)
-}
-
-func (c configuratorType) Command(name, help string) *kingpin.CmdClause {
-	return c.app.Command(name, help)
-}
-
 // RunWithArgs the given application module's Start(...) method.
 //
 // Its arguments will be obtained from the installed modules.
@@ -128,13 +130,12 @@ func (a *Application) RunWithArgs(args []string, module interface{}) error {
 	modules := []interface{}{}
 	modules = append(modules, a.modules...)
 	modules = append(modules, module)
-	configurator := configuratorType{injector, a.Application}
 	for _, module := range modules {
 		if err := injector.Install(module); err != nil {
 			return err
 		}
-		if conf, ok := module.(Configurable); ok {
-			if err := conf.Configure(configurator); err != nil {
+		if configurable, ok := module.(Configurable); ok {
+			if err := configurable.Configure(injector); err != nil {
 				return err
 			}
 		}
@@ -147,8 +148,11 @@ func (a *Application) RunWithArgs(args []string, module interface{}) error {
 	if err != nil {
 		return err
 	}
+	if err = injector.Bind(SelectedCommand(command)); err != nil {
+		return err
+	}
 	// Call module Start(...) methods.
-	for _, module := range modules {
+	for _, module := range modules[:len(modules)-1] {
 		mv := reflect.ValueOf(module)
 		method := mv.MethodByName("Start")
 		if method.IsValid() {
@@ -158,9 +162,6 @@ func (a *Application) RunWithArgs(args []string, module interface{}) error {
 		}
 	}
 	// Run application.
-	if err = injector.Bind(SelectedCommand(command)); err != nil {
-		return err
-	}
 	_, err = injector.Call(start.Interface())
 	// Call module Stop(...) methods in reverse.
 	for i := len(a.modules) - 1; i >= 0; i-- {

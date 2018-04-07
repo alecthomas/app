@@ -27,21 +27,6 @@ func Install(modules ...interface{}) *Application {
 	return App.Install(modules...)
 }
 
-// Flag adds a new flag to the application.
-func Flag(name, help string) *kingpin.Clause {
-	return App.Flag(name, help)
-}
-
-// Arg adds a new positional argument to the application.
-func Arg(name, help string) *kingpin.Clause {
-	return App.Arg(name, help)
-}
-
-// Command adds a new top-level argument to the application.
-func Command(name, help string) *kingpin.CmdClause {
-	return App.Command(name, help)
-}
-
 // Errorf prints a consistent error message to stderr.
 func Errorf(format string, args ...interface{}) {
 	kingpin.Errorf(format, args...)
